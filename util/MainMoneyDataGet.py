@@ -163,6 +163,28 @@ def write_data(code_list: list, dt_line: int) -> None:
     print("成功写入本批数据")
 
 
+# 读取主力资金数据：
+def get_main_money_data_from_local(code: str, begin_dt: str, end_dt: str) -> pd.DataFrame:
+    """
+    :param code: 股票代码
+    :param begin_dt: 开始时间
+    :param end_dt: 结束时间
+    :return:
+    """
+    base_dir = r'E:\stock_data\main_money'
+    file_name = os.path.join(base_dir, f'{code}.csv')
+    if not os.path.exists(file_name):
+        print("没有当前股票信息，请更新数据")
+        return
+    else:
+        df = pd.read_csv(file_name, header=0, encoding='utf-8-sig')
+        if df['小单净流入'].sum() == .0:
+            print("本股票{}数据异常：请谨慎使用".format(code))
+        df['flag'] = df['日期'].apply(lambda x: 0 if begin_dt <= x <= end_dt else 1)
+        df = df[df['flag'] == 0]
+        return df
+
+
 if __name__ == "__main__":
     all_code_list = get_stock_list()
     multi_pool_deal_partition(datas=all_code_list, func=write_data, cores=5, slice_size=30, args=10)
