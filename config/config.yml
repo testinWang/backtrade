@@ -1,0 +1,16 @@
+mysql:
+    host: 127.0.0.1
+    user: root
+    port: 3306
+    password: 111
+    database: stock
+
+tdx_data_path:
+    tdx_file_dir_sh: C:\zd_zyb\vipdoc\sh\lday
+    tdx_file_dir_sz: C:\zd_zyb\vipdoc\sz\lday
+    save_local_path: E:\deeplearning\stock-data-validation\data\base_data_csv
+    main_money_local_path: E:\stock_data\main_money
+
+mysql_table:
+    date_k_table: date_k
+    main_money_k_table: date_main_money_k

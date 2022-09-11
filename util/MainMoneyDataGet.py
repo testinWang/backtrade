@@ -1,7 +1,12 @@
+# -- coding: utf-8 --**
 import os
 import pandas as pd
 import requests
+import traceback
+import random
 from util.MultiPoolUtil import multi_pool_deal_partition
+from util.BaseFunc import standard_dt, get_format_day, days_delta
+from util.LoadConfig import get_conf
 
 
 def gen_secid(stock_code: str) -> str:
@@ -77,58 +82,52 @@ def get_history_bill(stock_code: str, data_line: int) -> pd.DataFrame:
     url = 'http://push2his.eastmoney.com/api/qt/stock/fflow/daykline/get'
     times = 0
     while times <= 2:
-
-        json_response = requests.get(url, headers=EastmoneyHeaders, params=params).json()
-        data = json_response.get('data')
-        if data is None:
-            if secid[0] == '0':
-                secid = f'1.{stock_code}'
-            else:
-                secid = f'0.{stock_code}'
-            params['secid'] = secid
-
-            json_response: dict = requests.get(url, headers=EastmoneyHeaders, params=params).json()
+        try:
+            json_response = requests.get(url, headers=EastmoneyHeaders, params=params).json()
             data = json_response.get('data')
-        if data is None:
-            print('股票代码:', stock_code, '可能有误')
-            times += 1
-            continue
+            if data is None:
+                if secid[0] == '0':
+                    secid = f'1.{stock_code}'
+                else:
+                    secid = f'0.{stock_code}'
+                params['secid'] = secid
 
-        if json_response is None:
-            times += 1
-            continue
+                json_response: dict = requests.get(url, headers=EastmoneyHeaders, params=params).json()
+                data = json_response.get('data')
+            if data is None:
+                print('股票代码:', stock_code, '可能有误')
+                times += 1
+                continue
 
-        data = json_response['data']
-        klines = data['klines']
-        rows = []
-        for _kline in klines:
-            kline = _kline.split(',')
-            rows.append(kline)
-        df = pd.DataFrame(rows, columns=columns)
+            if json_response is None:
+                times += 1
+                continue
 
-        if df['小单净流入'].sum() == 0:
-            print('数据异常， 重试一次')
+            data = json_response['data']
+            klines = data['klines']
+            rows = []
+            for _kline in klines:
+                kline = _kline.split(',')
+                rows.append(kline)
+            df = pd.DataFrame(rows, columns=columns)
+            # 日期表示进行标准化
+            df['日期'] = df['日期'].apply(str).apply(standard_dt)
+
+            if df['小单净流入'].sum() == 0:
+                print('数据异常， 重试一次')
+                times += 1
+                continue
+            else:
+                return df
+        except Exception as e:
+            print(traceback.format_exc())
             times += 1
-            continue
-        else:
-            return df
 
     # 最终没有结果返回空数据
     return pd.DataFrame(columns=columns)
 
 
-# 获取所有股票代码，#从通达信文件夹直接读取：
-def get_stock_list():
-    sh_file_path = r'C:\zd_zyb\vipdoc\sh\lday'
-    sz_file_path = r'C:\zd_zyb\vipdoc\sz\lday'
-    sh_file_list = os.listdir(sh_file_path)
-    sz_file_list = os.listdir(sz_file_path)
-    all_file_list = set(sh_file_list + sz_file_list)
-    code_list = [str(elem).strip()[2:8] for elem in all_file_list]
-    # 只留沪深两市
-    code_list = [elem for elem in code_list if elem.isdigit() and int(elem[0]) in (0, 3, 6)]
 
-    return code_list
 
 
 # 多进程获取并写入csv文件：
@@ -164,7 +163,7 @@ def write_data(code_list: list, dt_line: int) -> None:
 
 
 # 读取主力资金数据：
-def get_main_money_data_from_local(code: str, begin_dt: str, end_dt: str) -> pd.DataFrame:
+def get_main_money_data_from_local(code: str, begin_dt: str, end_dt: str) -> pd.DataFrame or None:
     """
     :param code: 股票代码
     :param begin_dt: 开始时间
@@ -175,16 +174,61 @@ def get_main_money_data_from_local(code: str, begin_dt: str, end_dt: str) -> pd.
     file_name = os.path.join(base_dir, f'{code}.csv')
     if not os.path.exists(file_name):
         print("没有当前股票信息，请更新数据")
-        return
+        return None
     else:
         df = pd.read_csv(file_name, header=0, encoding='utf-8-sig')
         if df['小单净流入'].sum() == .0:
-            print("本股票{}数据异常：请谨慎使用".format(code))
+            print("本股票{}数据异常：获取所有数据为0 ，不参与回测计算".format(code))
+            return None
         df['flag'] = df['日期'].apply(lambda x: 0 if begin_dt <= x <= end_dt else 1)
         df = df[df['flag'] == 0]
         return df
 
 
+# 获取所有股票代码，#从通达信文件夹直接读取：
+def get_stock_list():
+    tdx_path = get_conf('tdx_data_path')
+    sh_tdx_path = tdx_path['tdx_file_dir_sh']
+    sz_tdx_path = tdx_path['tdx_file_dir_sz']
+    save_local_path = tdx_path['main_money_local_path']
+    sh_file_list = os.listdir(sh_tdx_path)
+    sz_file_list = os.listdir(sz_tdx_path)
+    all_file_list = set(sh_file_list + sz_file_list)
+    code_list = [str(elem).strip()[2:8] for elem in all_file_list]
+    # 只留沪深两市
+    code_list = [elem for elem in code_list if elem.isdigit() and int(elem[0]) in (0, 3, 6)]
+
+    return code_list
+
+
+# 首次写数据到mysql
+def update_data():
+    today = get_format_day(0, '-')
+    save_data_path = get_conf('tdx_data_path')['main_money_local_path']
+    files = os.listdir(save_data_path)
+    sample_file = random.sample(files, 10)
+    first_df = None
+    for file in sample_file:
+        try:
+            file_name = os.path.join(save_data_path, file)
+            df = pd.read_csv(file_name, header=0, encoding='utf-8-sig')
+            if len(df) >= 1:
+                first_df = df
+                first_df = pd.concat([df, first_df])
+
+        except Exception as e:
+            pass
+
+    local_max_dt = max(first_df['日期'].values.tolist())
+    data_line = days_delta(today, local_max_dt)
+    multi_pool_deal_partition(datas=all_code_list, func=write_data, cores=6, slice_size=30, args=data_line)
+
+
+
+
+
 if __name__ == "__main__":
     all_code_list = get_stock_list()
-    multi_pool_deal_partition(datas=all_code_list, func=write_data, cores=5, slice_size=30, args=10)
+
+    #multi_pool_deal_partition(datas=all_code_list, func=write_data, cores=6, slice_size=30, args=150)
+    update_data()
