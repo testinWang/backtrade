@@ -18,10 +18,11 @@ def standard_dt(str_dt: str) -> str:
     return "-".join((year, month, date))
 
 
-import datetime
-
-
 def days_delta(str1, str2):
+    if len(str1) == 8:
+        str1 = str1[:4] + "-" + str[4:6] + "-" + str1[6:8]
+    if len(str2) == 8:
+        str2 = str2[:4] + "-" + str[4:6] + "-" + str2[6:8]
     date1 = datetime.datetime.strptime(str1[0:10], "%Y-%m-%d")
     date2 = datetime.datetime.strptime(str2[0:10], "%Y-%m-%d")
     num = (date1 - date2).days

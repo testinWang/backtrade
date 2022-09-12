@@ -14,3 +14,7 @@ tdx_data_path:
 mysql_table:
     date_k_table: date_k
     main_money_k_table: date_main_money_k
+
+tdx_data_url:
+    ip: 119.147.212.81
+    port: 7709
