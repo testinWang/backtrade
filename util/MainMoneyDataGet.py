@@ -126,10 +126,6 @@ def get_history_bill(stock_code: str, data_line: int) -> pd.DataFrame:
     # 最终没有结果返回空数据
     return pd.DataFrame(columns=columns)
 
-
-
-
-
 # 多进程获取并写入csv文件：
 def write_data(code_list: list, dt_line: int) -> None:
     """
@@ -201,7 +197,7 @@ def get_stock_list():
     return code_list
 
 
-# 首次写数据到mysql
+# 更新数据到mysql
 def update_data():
     today = get_format_day(0, '-')
     save_data_path = get_conf('tdx_data_path')['main_money_local_path']
@@ -224,11 +220,8 @@ def update_data():
     multi_pool_deal_partition(datas=all_code_list, func=write_data, cores=6, slice_size=30, args=data_line)
 
 
-
-
-
 if __name__ == "__main__":
     all_code_list = get_stock_list()
-
-    #multi_pool_deal_partition(datas=all_code_list, func=write_data, cores=6, slice_size=30, args=150)
+    # 只在第一次使用
+    # multi_pool_deal_partition(datas=all_code_list, func=write_data, cores=6, slice_size=30, args=150)
     update_data()

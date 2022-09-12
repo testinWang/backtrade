@@ -82,6 +82,9 @@ class MysqlClient(object):
                 self.connect_db()
                 result = self.get_cursor().executemany(sql, tuple(val))
 
+            else:
+                print("mysql 查询类型选择不在范围内，请调整sql_type 参数")
+
             self.conn.commit()
             self.cursor.close()
             self.conn.close()

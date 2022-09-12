@@ -44,7 +44,7 @@ class KDataClient(object):
                 """
                 res = dict()
                 res['whole_data'] = data
-                res['current_dt_data'] = dict
+                res['current_dt_data'] = dict()
                 if only_all:
                     return res
                 else:
@@ -96,5 +96,5 @@ if __name__ == "__main__":
     save_d = KDataClient()
     time_begin = time.time()
     print(save_d.get_price_by_dt('000001', '2022-05-05'))
-    print(save_d.get_data_forward_ref('000001', '2022-05-05', forward_nums=2))
+    # print(save_d.get_data_forward_ref('000001', '2022-05-05', forward_nums=2))
     print(time.time()-time_begin)

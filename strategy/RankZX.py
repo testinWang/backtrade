@@ -3,7 +3,8 @@ import os
 import sys
 
 
-class RankZX:
+class RankZX(object):
+
     def __init__(self):
         self.base_data_path = r'C:\zd_zyb\T0002\blocknew'
         self.zx_path = os.path.join(self.base_data_path, "ZXG.blk")
