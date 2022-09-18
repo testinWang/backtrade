@@ -8,7 +8,7 @@ class MainMoneyClient(object):
         self.mysql_client = MysqlClient()
         self.main_money_tale_name = get_conf('mysql_table')['main_money_k_table']
 
-    def get_main_money_by_dt(self,  code: str, begin_dt: str, end_dt: str) -> dict:
+    def get_main_money_by_dt(self, code: str, begin_dt: str, end_dt: str) -> dict:
 
         # code 在mysql 中存储 前缀都增加了前缀 '1'
         # dt 存储格式如 '20220808'
